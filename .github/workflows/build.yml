@@ -1,0 +1,184 @@
+name: 'Build & Release'
+on:
+  - 'push'
+jobs:
+  build:
+    permissions:
+      contents: 'write'
+    runs-on: 'ubuntu-slim'
+    strategy:
+      matrix:
+        include:
+          - os: 'aix'
+            arch: 'ppc64'
+
+          - os: 'android'
+            arch: 'arm64'
+
+          - os: 'darwin'
+            arch: 'arm64'
+          - os: 'darwin'
+            arch: 'arm64'
+
+          - os: 'dragonfly'
+            arch: 'amd64'
+
+          - os: 'freebsd'
+            arch: '386'
+          - os: 'freebsd'
+            arch: 'amd64'
+          - os: 'freebsd'
+            arch: 'arm'
+            arm: '5'
+          - os: 'freebsd'
+            arch: 'arm'
+            arm: '6'
+          - os: 'freebsd'
+            arch: 'arm'
+            arm: '7'
+          - os: 'freebsd'
+            arch: 'arm64'
+
+          - os: 'illumos'
+            arch: 'amd64'
+
+          - os: 'js'
+            arch: 'wasm'
+
+          - os: 'linux'
+            arch: '386'
+          - os: 'linux'
+            arch: 'amd64'
+          - os: 'linux'
+            arch: 'arm'
+            arm: '5'
+          - os: 'linux'
+            arch: 'arm'
+            arm: '6'
+          - os: 'linux'
+            arch: 'arm'
+            arm: '7'
+          - os: 'linux'
+            arch: 'arm64'
+          - os: 'linux'
+            arch: 'loong64'
+          - os: 'linux'
+            arch: 'mips'
+          - os: 'linux'
+            arch: 'mips64'
+          - os: 'linux'
+            arch: 'mips64le'
+          - os: 'linux'
+            arch: 'mipsle'
+          - os: 'linux'
+            arch: 'ppc64'
+          - os: 'linux'
+            arch: 'ppc64le'
+          - os: 'linux'
+            arch: 'riscv64'
+          - os: 'linux'
+            arch: 's390x'
+
+          - os: 'netbsd'
+            arch: '386'
+          - os: 'netbsd'
+            arch: 'amd64'
+          - os: 'netbsd'
+            arch: 'arm'
+            arm: '5'
+          - os: 'netbsd'
+            arch: 'arm'
+            arm: '6'
+          - os: 'netbsd'
+            arch: 'arm'
+            arm: '7'
+          - os: 'netbsd'
+            arch: 'arm64'
+
+          - os: 'openbsd'
+            arch: '386'
+          - os: 'openbsd'
+            arch: 'amd64'
+          - os: 'openbsd'
+            arch: 'arm'
+            arm: '5'
+          - os: 'openbsd'
+            arch: 'arm'
+            arm: '6'
+          - os: 'openbsd'
+            arch: 'arm'
+            arm: '7'
+          - os: 'openbsd'
+            arch: 'arm64'
+          - os: 'openbsd'
+            arch: 'ppc64'
+          - os: 'openbsd'
+            arch: 'riscv64'
+
+          - os: 'plan9'
+            arch: '386'
+          - os: 'plan9'
+            arch: 'amd64'
+          - os: 'plan9'
+            arch: 'arm'
+            arm: '5'
+          - os: 'plan9'
+            arch: 'arm'
+            arm: '6'
+          - os: 'plan9'
+            arch: 'arm'
+            arm: '7'
+
+          - os: 'solaris'
+            arch: 'amd64'
+
+          - os: 'wasip1'
+            arch: 'wasm'
+
+          - os: 'windows'
+            arch: '386'
+          - os: 'windows'
+            arch: 'amd64'
+          - os: 'windows'
+            arch: 'arm64'
+    env:
+      GOOS: ${{ matrix.os }}
+      GOARCH: ${{ matrix.arch }}
+      GOARM: ${{ matrix.arm }}
+
+    steps:
+      - uses: 'actions/checkout@v6'
+
+      - uses: 'actions/setup-go@v6'
+        with:
+          go-version: '1.26.2'
+
+      - run: |
+          go build
+
+      - run: |
+          install -dm755 assets/
+
+          if [ "$GOARCH" = '386' ]; then
+            ARCH='x86'
+          elif [ "$GOARCH" = 'amd64' ]; then
+            ARCH='x86_64'
+          elif [ "$GOARCH" = 'arm' ]; then
+            ARCH="arm_v$GOARM"
+          else
+            ARCH="$GOARCH"
+          fi
+
+          RELEASENAME="cipherutil-$GOOS-$ARCH"
+          if [ "$GOOS" = 'windows' ]; then
+            zip "assets/$RELEASENAME.zip" cipherutil.exe LICENSE README.md
+          else
+            tar -zcf "assets/$RELEASENAME.tar.gz" cipherutil LICENSE README.md
+          fi
+        if: github.ref_type == 'tag'
+
+      - uses: 'softprops/action-gh-release@v3'
+        if: github.ref_type == 'tag'
+        with:
+          files: |
+            assets/*
